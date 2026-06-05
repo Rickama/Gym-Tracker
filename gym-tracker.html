@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GymTracker">
+  <meta name="theme-color" content="#0d0d0d">
+  <title>GymTracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Bebas+Neue&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --card: #111111;
+      --row: #1a1a1a;
+      --border: #1e1e1e;
+      --border2: #2a2a2a;
+      --text: #e5e5e5;
+      --muted: #555;
+      --accent: #f97316;
+      --pink: #ec4899;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', 'Courier New', monospace;
+      min-height: 100vh;
+      overscroll-behavior: none;
+    }
+
+    body {
+      padding-top: var(--safe-top);
+      padding-bottom: calc(var(--safe-bottom) + 80px);
+    }
+
+    /* ── HEADER ── */
+    .header {
+      padding: calc(var(--safe-top) + 28px) 20px 0;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .date-label {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .progress-badge {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 1px;
+      background: var(--row);
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border2);
+    }
+
+    .workout-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 40px;
+      letter-spacing: 3px;
+      color: #fff;
+      margin: 8px 0 20px;
+      cursor: pointer;
+      line-height: 1;
+      word-break: break-word;
+    }
+
+    .title-input {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 36px;
+      letter-spacing: 2px;
+      color: #fff;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid #fff;
+      outline: none;
+      width: 100%;
+      padding-bottom: 2px;
+      margin: 8px 0 20px;
+    }
+
+    .progress-bar-track {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-bottom: 28px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--pink));
+      transition: width .4s ease;
+    }
+
+    /* ── CONTENT ── */
+    .content {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    /* ── EXERCISE CARD ── */
+    .ex-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+
+    .ex-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 16px 11px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .ex-header-left {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .cat-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .ex-name {
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: .5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cat-badge {
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    .del-ex-btn {
+      background: none;
+      border: none;
+      color: #ef4444;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 0 2px;
+      line-height: 1;
+      opacity: 0.3;
+      transition: opacity .2s;
+      flex-shrink: 0;
+    }
+
+    .del-ex-btn:active { opacity: 1; }
+
+    /* Set table */
+    .set-cols {
+      display: grid;
+      grid-template-columns: 28px 1fr 1fr 32px;
+      padding: 7px 16px 3px;
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .set-cols span:nth-child(2),
+    .set-cols span:nth-child(3) { text-align: center; }
+
+    .set-row {
+      display: grid;
+      grid-template-columns: 28px 1fr 1fr 32px;
+      padding: 3px 16px;
+      transition: background .2s;
+    }
+
+    .set-row.filled { background: #141414; }
+
+    .set-num {
+      font-size: 10px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+    }
+
+    .set-input-wrap {
+      background: var(--row);
+      border-radius: 6px;
+      margin: 3px 3px;
+      padding: 7px 6px;
+    }
+
+    .set-input {
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: inherit;
+      color: var(--text);
+      font-size: 15px;
+      width: 100%;
+      text-align: center;
+      -moz-appearance: textfield;
+    }
+
+    .set-input::-webkit-inner-spin-button,
+    .set-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    .set-input::placeholder { color: #3a3a3a; }
+
+    .del-set-btn {
+      background: none;
+      border: none;
+      color: #ef4444;
+      font-size: 16px;
+      cursor: pointer;
+      opacity: 0.2;
+      padding: 0;
+      align-self: center;
+      transition: opacity .15s;
+    }
+
+    .del-set-btn:active { opacity: 1; }
+
+    .add-set-btn {
+      display: block;
+      width: 100%;
+      margin: 7px 0 0;
+      padding: 7px 0;
+      background: #161616;
+      border: 1px dashed var(--border2);
+      border-radius: 6px;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background .15s;
+    }
+
+    .add-set-btn:active { background: #222; }
+
+    .card-footer { padding: 7px 16px 13px; }
+
+    /* ── ADD EXERCISE ── */
+    .add-ex-trigger {
+      width: 100%;
+      background: transparent;
+      border: 1px dashed var(--border2);
+      color: var(--muted);
+      border-radius: 12px;
+      padding: 16px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      transition: border-color .2s, color .2s;
+    }
+
+    .add-ex-trigger:active { border-color: #555; color: #888; }
+
+    .add-ex-form {
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+
+    .form-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .form-input {
+      background: var(--row);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 10px 13px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text);
+      width: 100%;
+      outline: none;
+      margin-bottom: 10px;
+    }
+
+    .cat-pills {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .cat-pill {
+      background: var(--row);
+      border: 1px solid var(--border2);
+      color: #666;
+      border-radius: 20px;
+      padding: 4px 11px;
+      cursor: pointer;
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      font-family: inherit;
+      transition: all .15s;
+    }
+
+    .form-actions { display: flex; gap: 8px; }
+
+    .btn-primary {
+      flex: 1;
+      background: var(--text);
+      color: var(--bg);
+      border: none;
+      border-radius: 8px;
+      padding: 11px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    .btn-secondary {
+      flex: 1;
+      background: var(--row);
+      color: #888;
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 11px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    /* ── NOTES ── */
+    .notes-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+    }
+
+    .notes-label {
+      font-size: 9px;
+      letter-spacing: 3px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .notes-textarea {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: inherit;
+      color: #888;
+      font-size: 13px;
+      resize: none;
+      line-height: 1.6;
+    }
+
+    /* ── SAVE ── */
+    .save-btn {
+      width: 100%;
+      background: var(--row);
+      color: var(--text);
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 16px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      transition: background .2s, color .2s;
+      margin-bottom: 14px;
+    }
+
+    .save-btn:active { background: var(--text); color: var(--bg); }
+
+    /* ── INSTALL BANNER ── */
+    .install-banner {
+      position: fixed;
+      bottom: calc(var(--safe-bottom) + 10px);
+      left: 16px;
+      right: 16px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 100;
+      box-shadow: 0 8px 32px rgba(0,0,0,.6);
+      animation: slideUp .4s ease;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    .install-icon { font-size: 24px; flex-shrink: 0; }
+
+    .install-text { flex: 1; }
+
+    .install-text strong {
+      display: block;
+      font-size: 12px;
+      color: var(--text);
+      letter-spacing: 1px;
+      margin-bottom: 2px;
+    }
+
+    .install-text span {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: .5px;
+    }
+
+    .install-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <span class="date-label" id="dateLabel"></span>
+    <span class="progress-badge" id="progressBadge">0/0 set</span>
+  </div>
+  <div id="titleWrap"></div>
+  <div class="progress-bar-track">
+    <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+  </div>
+</div>
+
+<div class="content">
+  <div id="exerciseList"></div>
+  <div id="addSection"></div>
+
+  <div class="notes-card">
+    <div class="notes-label">Note</div>
+    <textarea class="notes-textarea" id="notesArea" rows="3" placeholder="Aggiungi note sull'allenamento..."></textarea>
+  </div>
+
+  <button class="save-btn" onclick="saveWorkout()">Salva allenamento</button>
+</div>
+
+<div class="install-banner" id="installBanner" style="display:none">
+  <span class="install-icon">📲</span>
+  <div class="install-text">
+    <strong>Aggiungi alla Home</strong>
+    <span>Tocca <b>Condividi</b> → "Aggiungi a schermata Home"</span>
+  </div>
+  <button class="install-close" onclick="document.getElementById('installBanner').style.display='none'">×</button>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+const CAT_COLORS = {
+  gambe:    "#f97316",
+  petto:    "#3b82f6",
+  schiena:  "#10b981",
+  spalle:   "#a855f7",
+  braccia:  "#ec4899",
+  core:     "#eab308",
+  cardio:   "#ef4444",
+  tricipiti:"#3b82f6",
+  circuito: "#10b981",
+};
+
+const CATEGORIES = ["gambe","petto","schiena","spalle","braccia","tricipiti","core","cardio"];
+
+let nextId = 10;
+let workoutName = "Gambe e Tricipiti";
+let editingName = false;
+let showAddForm = false;
+let selectedCat = "gambe";
+
+let exercises = [
+  { id:1, name:"Leg Press",              category:"gambe",     sets:[{r:12,w:""},{r:12,w:""},{r:10,w:""},{r:10,w:""},{r:10,w:""}] },
+  { id:2, name:"Leg Curl",               category:"gambe",     sets:[{r:10,w:""},{r:8,w:""},{r:8,w:""},{r:8,w:""}] },
+  { id:3, name:"Calf Machine",           category:"gambe",     sets:[{r:10,w:""},{r:8,w:""},{r:8,w:""},{r:8,w:""}] },
+  { id:4, name:"Tricipiti Poliercolina", category:"tricipiti", sets:[{r:12,w:""},{r:10,w:""},{r:8,w:""},{r:8,w:""}] },
+  { id:5, name:"Tricipiti Pol. 90°",     category:"tricipiti", sets:[{r:10,w:""},{r:8,w:""},{r:8,w:""}] },
+  { id:6, name:"Rich. Chest Press",      category:"petto",     sets:[{r:12,w:""},{r:12,w:""},{r:12,w:""},{r:12,w:""}] },
+  { id:7, name:"Rich. Alzate Laterali",  category:"spalle",    sets:[{r:12,w:""},{r:12,w:""},{r:12,w:""}] },
+];
+
+const CIRCUIT = [
+  { id:8, name:"Alzate Gambe",    category:"circuito", sets:[{r:"MAX",w:""},{r:"MAX",w:""},{r:"MAX",w:""},{r:"MAX",w:""}], circuit:true },
+  { id:9, name:"Rotazione Busto", category:"circuito", sets:[{r:20,w:""},{r:20,w:""},{r:20,w:""},{r:20,w:""}], circuit:true },
+  { id:10,name:"2' Aerobico",     category:"circuito", sets:[{r:"2min",w:""},{r:"2min",w:""},{r:"2min",w:""},{r:"2min",w:""}], circuit:true },
+];
+
+// ── Date ──────────────────────────────────────────────────────────────────
+document.getElementById("dateLabel").textContent =
+  new Date().toLocaleDateString("it-IT", {weekday:"long",day:"numeric",month:"long",year:"numeric"});
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function allExercises() { return [...exercises, ...CIRCUIT]; }
+
+function countProgress() {
+  const all = allExercises();
+  const filled = all.reduce((a,ex) => a + ex.sets.filter(s => s.w !== "" && s.w !== undefined).length, 0);
+  const total  = all.reduce((a,ex) => a + ex.sets.length, 0);
+  return { filled, total };
+}
+
+function updateProgress() {
+  const { filled, total } = countProgress();
+  document.getElementById("progressBadge").textContent = `${filled}/${total} set`;
+  document.getElementById("progressFill").style.width = total > 0 ? `${(filled/total)*100}%` : "0%";
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function render() {
+  renderTitle();
+  renderExercises();
+  renderAddSection();
+  updateProgress();
+}
+
+function renderTitle() {
+  const wrap = document.getElementById("titleWrap");
+  if (editingName) {
+    wrap.innerHTML = `<input class="title-input" id="nameInput" value="${workoutName}" autocomplete="off">`;
+    const inp = document.getElementById("nameInput");
+    inp.focus();
+    inp.setSelectionRange(inp.value.length, inp.value.length);
+    inp.addEventListener("blur", () => { workoutName = inp.value || workoutName; editingName = false; render(); });
+    inp.addEventListener("keydown", e => { if (e.key==="Enter") inp.blur(); });
+  } else {
+    wrap.innerHTML = `<h1 class="workout-title" onclick="editingName=true;render()">${workoutName}</h1>`;
+  }
+}
+
+function renderExercises() {
+  const list = document.getElementById("exerciseList");
+  let html = "";
+
+  // Main exercises
+  exercises.forEach(ex => { html += renderCard(ex, false); });
+
+  // Circuit separator
+  html += `
+    <div style="background:#0a1a14;border:1px solid #10b981;border-radius:10px;
+                padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:16px">🔄</span>
+      <div>
+        <div style="font-size:11px;color:#10b981;letter-spacing:2px;font-weight:500">CIRCUITO × 4</div>
+        <div style="font-size:10px;color:#555;margin-top:2px;letter-spacing:1px">riposo tra i giri: <span style="color:#888">________</span></div>
+      </div>
+    </div>`;
+
+  CIRCUIT.forEach(ex => { html += renderCard(ex, true); });
+
+  list.innerHTML = html;
+  attachCardListeners();
+}
+
+function renderCard(ex, isCircuit) {
+  const color = CAT_COLORS[ex.category] || "#888";
+  const setsHtml = ex.sets.map((s, i) => {
+    const filled = s.w !== "" && s.w !== undefined ? "filled" : "";
+    const repsVal = s.r !== undefined ? s.r : "";
+    const kgVal   = s.w !== undefined ? s.w : "";
+    return `
+      <div class="set-row ${filled}" data-exid="${ex.id}" data-setidx="${i}">
+        <span class="set-num">${i+1}</span>
+        <div class="set-input-wrap">
+          <input class="set-input" type="${isCircuit ? 'text' : 'number'}" inputmode="${isCircuit ? 'text' : 'decimal'}"
+            placeholder="${isCircuit ? '—' : '—'}" value="${repsVal}"
+            data-exid="${ex.id}" data-setidx="${i}" data-field="r"
+            ${typeof s.r === 'string' && isNaN(s.r) ? 'readonly' : ''}>
+        </div>
+        <div class="set-input-wrap">
+          <input class="set-input" type="${isCircuit ? 'text' : 'number'}" inputmode="${isCircuit ? 'text' : 'decimal'}"
+            placeholder="—" value="${kgVal}"
+            data-exid="${ex.id}" data-setidx="${i}" data-field="w"
+            ${isCircuit ? 'readonly style="color:#555"' : ''}>
+        </div>
+        <button class="del-set-btn" data-exid="${ex.id}" data-setidx="${i}">×</button>
+      </div>`;
+  }).join("");
+
+  return `
+    <div class="ex-card" id="card-${ex.id}">
+      <div class="ex-header">
+        <div class="ex-header-left">
+          <div class="cat-dot" style="background:${color}"></div>
+          <span class="ex-name">${ex.name}</span>
+          <span class="cat-badge" style="color:${color};background:${color}22">${ex.category}</span>
+        </div>
+        ${!isCircuit ? `<button class="del-ex-btn" data-exid="${ex.id}">×</button>` : ""}
+      </div>
+      <div class="set-cols">
+        <span>SET</span><span>REPS</span><span>KG</span><span></span>
+      </div>
+      ${setsHtml}
+      <div class="card-footer">
+        ${!isCircuit ? `<button class="add-set-btn" data-exid="${ex.id}">+ Aggiungi set</button>` : ""}
+      </div>
+    </div>`;
+}
+
+function attachCardListeners() {
+  // Set inputs
+  document.querySelectorAll(".set-input[data-field]").forEach(inp => {
+    inp.addEventListener("input", e => {
+      const exId = +e.target.dataset.exid;
+      const setIdx = +e.target.dataset.setidx;
+      const field = e.target.dataset.field;
+      const ex = exercises.find(x => x.id === exId);
+      if (ex) {
+        ex.sets[setIdx][field] = e.target.value;
+        const row = e.target.closest(".set-row");
+        if (ex.sets[setIdx].w !== "" && ex.sets[setIdx].r !== "") {
+          row.classList.add("filled");
+        } else {
+          row.classList.remove("filled");
+        }
+        updateProgress();
+      }
+    });
+  });
+
+  // Del set
+  document.querySelectorAll(".del-set-btn").forEach(btn => {
+    btn.addEventListener("click", e => {
+      const exId = +e.target.dataset.exid;
+      const setIdx = +e.target.dataset.setidx;
+      const ex = exercises.find(x => x.id === exId);
+      if (ex && ex.sets.length > 1) {
+        ex.sets.splice(setIdx, 1);
+        render();
+      }
+    });
+  });
+
+  // Del exercise
+  document.querySelectorAll(".del-ex-btn").forEach(btn => {
+    btn.addEventListener("click", e => {
+      const exId = +e.target.dataset.exid;
+      exercises = exercises.filter(x => x.id !== exId);
+      render();
+    });
+  });
+
+  // Add set
+  document.querySelectorAll(".add-set-btn").forEach(btn => {
+    btn.addEventListener("click", e => {
+      const exId = +e.target.dataset.exid;
+      const ex = exercises.find(x => x.id === exId);
+      if (ex) { ex.sets.push({r:"",w:""}); render(); }
+    });
+  });
+}
+
+function renderAddSection() {
+  const sec = document.getElementById("addSection");
+  if (showAddForm) {
+    const pillsHtml = CATEGORIES.map(cat => {
+      const color = CAT_COLORS[cat] || "#888";
+      const active = cat === selectedCat;
+      return `<button class="cat-pill" data-cat="${cat}"
+        style="${active ? `background:${color}22;border-color:${color};color:${color}` : ''}"
+      >${cat}</button>`;
+    }).join("");
+
+    sec.innerHTML = `
+      <div class="add-ex-form">
+        <div class="form-label">Nuovo esercizio</div>
+        <input class="form-input" id="newExName" placeholder="Nome esercizio" autocomplete="off">
+        <div class="cat-pills">${pillsHtml}</div>
+        <div class="form-actions">
+          <button class="btn-primary" id="confirmAddEx">Aggiungi</button>
+          <button class="btn-secondary" id="cancelAddEx">Annulla</button>
+        </div>
+      </div>`;
+
+    document.getElementById("newExName").focus();
+
+    document.querySelectorAll(".cat-pill").forEach(pill => {
+      pill.addEventListener("click", e => {
+        selectedCat = e.target.dataset.cat;
+        renderAddSection();
+      });
+    });
+
+    document.getElementById("confirmAddEx").addEventListener("click", () => {
+      const name = document.getElementById("newExName").value.trim();
+      if (!name) return;
+      exercises.push({ id: ++nextId, name, category: selectedCat, sets:[{r:"",w:""},{r:"",w:""},{r:"",w:""}] });
+      showAddForm = false;
+      render();
+    });
+
+    document.getElementById("newExName").addEventListener("keydown", e => {
+      if (e.key === "Enter") document.getElementById("confirmAddEx").click();
+    });
+
+    document.getElementById("cancelAddEx").addEventListener("click", () => {
+      showAddForm = false; render();
+    });
+
+  } else {
+    sec.innerHTML = `<button class="add-ex-trigger" id="showAddBtn">+ Aggiungi esercizio</button>`;
+    document.getElementById("showAddBtn").addEventListener("click", () => {
+      showAddForm = true; render();
+    });
+  }
+}
+
+// ── Save ───────────────────────────────────────────────────────────────────
+function saveWorkout() {
+  const data = {
+    date: new Date().toISOString(),
+    name: workoutName,
+    notes: document.getElementById("notesArea").value,
+    exercises: exercises.map(ex => ({
+      name: ex.name,
+      category: ex.category,
+      sets: ex.sets.map(s => ({ reps: s.r, kg: s.w }))
+    }))
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url;
+  a.download = `allenamento-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Install banner (Safari only) ───────────────────────────────────────────
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = window.navigator.standalone;
+if (isIOS && !isStandalone && !sessionStorage.getItem("bannerDismissed")) {
+  setTimeout(() => {
+    document.getElementById("installBanner").style.display = "flex";
+  }, 1500);
+  document.getElementById("installBanner").querySelector(".install-close")
+    .addEventListener("click", () => sessionStorage.setItem("bannerDismissed","1"));
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
