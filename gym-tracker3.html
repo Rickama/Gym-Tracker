@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GymTracker">
+  <meta name="theme-color" content="#0d0d0d">
+  <title>GymTracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Bebas+Neue&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d0d0d; --card: #111111; --row: #1a1a1a;
+      --border: #1e1e1e; --border2: #2a2a2a;
+      --text: #e5e5e5; --muted: #555;
+      --accent: #f97316; --pink: #ec4899;
+      --green: #10b981;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { background: var(--bg); color: var(--text); font-family: 'DM Mono','Courier New',monospace; min-height: 100vh; overscroll-behavior: none; }
+    body { padding-top: var(--safe-top); padding-bottom: calc(var(--safe-bottom) + 80px); }
+
+    /* HEADER */
+    .header { padding: calc(var(--safe-top) + 28px) 20px 0; max-width: 600px; margin: 0 auto; }
+    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .date-label { font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+    .progress-badge { font-size: 10px; color: var(--muted); letter-spacing: 1px; background: var(--row); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border2); }
+    .workout-title { font-family: 'Bebas Neue',sans-serif; font-size: 40px; letter-spacing: 3px; color: #fff; margin: 8px 0 20px; cursor: pointer; line-height: 1; word-break: break-word; }
+    .title-input { font-family: 'Bebas Neue',sans-serif; font-size: 36px; letter-spacing: 2px; color: #fff; background: transparent; border: none; border-bottom: 2px solid #fff; outline: none; width: 100%; padding-bottom: 2px; margin: 8px 0 20px; }
+    .progress-bar-track { height: 3px; background: var(--border); border-radius: 2px; margin-bottom: 28px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--accent), var(--pink)); transition: width .4s ease; }
+
+    /* CONTENT */
+    .content { max-width: 600px; margin: 0 auto; padding: 0 16px; }
+
+    /* EXERCISE CARD */
+    .ex-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 14px; overflow: visible; position: relative; transition: opacity .2s, transform .2s; }
+    .ex-card.dragging { opacity: .5; transform: scale(.98); }
+    .ex-card.drag-over { border-color: var(--accent); }
+
+    .ex-header { display: flex; align-items: center; justify-content: space-between; padding: 11px 12px 10px; border-bottom: 1px solid var(--border); gap: 6px; }
+    .ex-header-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+    .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .ex-name { font-size: 13px; font-weight: 500; letter-spacing: .5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cat-badge { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; padding: 2px 7px; border-radius: 10px; flex-shrink: 0; }
+
+    .ex-header-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    .drag-handle { background: none; border: none; color: var(--muted); font-size: 16px; cursor: grab; padding: 2px 4px; line-height: 1; touch-action: none; }
+    .drag-handle:active { cursor: grabbing; }
+    .del-ex-btn { background: none; border: none; color: #ef4444; font-size: 20px; cursor: pointer; padding: 0 2px; line-height: 1; opacity: 0.3; }
+    .del-ex-btn:active { opacity: 1; }
+
+    /* SET TABLE */
+    .set-cols { display: grid; grid-template-columns: 28px 1fr 1fr 36px 28px; padding: 7px 12px 3px; font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+    .set-cols span { text-align: center; }
+    .set-cols span:first-child { text-align: left; }
+
+    .set-row { display: grid; grid-template-columns: 28px 1fr 1fr 36px 28px; padding: 3px 12px; transition: background .2s; }
+    .set-row.done { background: #0d1f0f; }
+
+    .set-num { font-size: 10px; color: var(--muted); display: flex; align-items: center; }
+    .set-input-wrap { background: var(--row); border-radius: 6px; margin: 3px 3px; padding: 6px 5px; }
+    .set-input { background: transparent; border: none; outline: none; font-family: inherit; color: var(--text); font-size: 14px; width: 100%; text-align: center; -moz-appearance: textfield; }
+    .set-input::-webkit-inner-spin-button, .set-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .set-input::placeholder { color: #3a3a3a; }
+
+    /* CHECK BUTTON */
+    .set-check { background: none; border: 1.5px solid var(--border2); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; align-self: center; font-size: 14px; transition: all .15s; flex-shrink: 0; color: transparent; }
+    .set-check.checked { background: var(--green); border-color: var(--green); color: #fff; }
+    .set-check:active { transform: scale(.9); }
+
+    .del-set-btn { background: none; border: none; color: #ef4444; font-size: 15px; cursor: pointer; opacity: 0.2; padding: 0; align-self: center; }
+    .del-set-btn:active { opacity: 1; }
+
+    .add-set-btn { display: block; width: 100%; margin: 7px 0 0; padding: 7px 0; background: #161616; border: 1px dashed var(--border2); border-radius: 6px; color: var(--muted); font-family: inherit; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
+    .add-set-btn:active { background: #222; }
+    .card-footer { padding: 7px 12px 13px; }
+
+    /* AEROBIC NOTE */
+    .aerobic-note { margin: 6px 12px 0; padding: 6px 10px; background: #0a1a0f; border: 1px solid #10b98133; border-radius: 8px; font-size: 10px; color: #10b981; letter-spacing: 1px; display: flex; align-items: center; gap: 6px; }
+
+    /* ADD EXERCISE */
+    .add-ex-trigger { width: 100%; background: transparent; border: 1px dashed var(--border2); color: var(--muted); border-radius: 12px; padding: 16px; cursor: pointer; font-family: inherit; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 14px; }
+    .add-ex-trigger:active { border-color: #555; }
+    .add-ex-form { background: var(--card); border: 1px solid var(--border2); border-radius: 12px; padding: 18px; margin-bottom: 14px; }
+    .form-label { font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; }
+    .form-input { background: var(--row); border: 1px solid var(--border2); border-radius: 8px; padding: 10px 13px; font-size: 14px; font-family: inherit; color: var(--text); width: 100%; outline: none; margin-bottom: 10px; }
+    .cat-pills { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
+    .cat-pill { background: var(--row); border: 1px solid var(--border2); color: #666; border-radius: 20px; padding: 4px 11px; cursor: pointer; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-family: inherit; }
+    .form-actions { display: flex; gap: 8px; }
+    .btn-primary { flex: 1; background: var(--text); color: var(--bg); border: none; border-radius: 8px; padding: 11px; cursor: pointer; font-family: inherit; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 500; }
+    .btn-secondary { flex: 1; background: var(--row); color: #888; border: 1px solid var(--border2); border-radius: 8px; padding: 11px; cursor: pointer; font-family: inherit; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; }
+
+    /* NOTES */
+    .notes-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+    .notes-label { font-size: 9px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+    .notes-textarea { width: 100%; background: transparent; border: none; outline: none; font-family: inherit; color: #888; font-size: 13px; resize: none; line-height: 1.6; }
+
+    /* SAVE */
+    .save-btn { width: 100%; background: var(--row); color: var(--text); border: 1px solid #333; border-radius: 12px; padding: 16px; cursor: pointer; font-family: inherit; font-size: 11px; letter-spacing: 4px; text-transform: uppercase; transition: background .2s, color .2s; margin-bottom: 14px; }
+    .save-btn:active { background: var(--text); color: var(--bg); }
+
+    /* RESET */
+    .reset-btn { width: 100%; background: transparent; color: #333; border: 1px solid #222; border-radius: 12px; padding: 12px; cursor: pointer; font-family: inherit; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 14px; }
+    .reset-btn:active { color: #ef4444; border-color: #ef4444; }
+
+    /* CIRCUIT DIVIDER */
+    .circuit-divider { background: #0a1a14; border: 1px solid #10b98155; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+
+    /* INSTALL BANNER */
+    .install-banner { position: fixed; bottom: calc(var(--safe-bottom) + 10px); left: 16px; right: 16px; background: #1a1a1a; border: 1px solid #333; border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,.6); animation: slideUp .4s ease; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .install-icon { font-size: 24px; flex-shrink: 0; }
+    .install-text { flex: 1; }
+    .install-text strong { display: block; font-size: 12px; color: var(--text); letter-spacing: 1px; margin-bottom: 2px; }
+    .install-text span { font-size: 10px; color: var(--muted); letter-spacing: .5px; }
+    .install-close { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 4px; }
+
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <span class="date-label" id="dateLabel"></span>
+    <span class="progress-badge" id="progressBadge">0/0 set</span>
+  </div>
+  <div id="titleWrap"></div>
+  <div class="progress-bar-track">
+    <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+  </div>
+</div>
+
+<div class="content">
+  <div id="exerciseList"></div>
+  <div id="addSection"></div>
+  <div class="notes-card">
+    <div class="notes-label">Note</div>
+    <textarea class="notes-textarea" id="notesArea" rows="3" placeholder="Aggiungi note sull'allenamento..."></textarea>
+  </div>
+  <button class="save-btn" onclick="saveWorkout()">Salva allenamento (PDF)</button>
+  <button class="reset-btn" onclick="resetWorkout()">Azzera allenamento</button>
+</div>
+
+<div class="install-banner" id="installBanner" style="display:none">
+  <span class="install-icon">📲</span>
+  <div class="install-text">
+    <strong>Aggiungi alla Home</strong>
+    <span>Tocca <b>Condividi</b> → "Aggiungi a schermata Home"</span>
+  </div>
+  <button class="install-close" id="installClose">×</button>
+</div>
+
+<script>
+// ── Constants ────────────────────────────────────────────────────────────────
+const STORAGE_KEY = "gymtracker_v1";
+
+const CAT_COLORS = {
+  gambe:"#f97316", petto:"#3b82f6", schiena:"#10b981",
+  spalle:"#a855f7", braccia:"#ec4899", tricipiti:"#3b82f6",
+  core:"#eab308", cardio:"#ef4444", circuito:"#10b981",
+};
+const CATEGORIES = ["gambe","petto","schiena","spalle","braccia","tricipiti","core","cardio"];
+
+// Esercizi Rich. richiedono nota aerobica
+const AEROBIC_KEYWORDS = ["rich.","richiamo","rich "];
+
+const DEFAULT_EXERCISES = [
+  { id:1, name:"Leg Press",              category:"gambe",     sets:[{r:12,w:"",done:false},{r:12,w:"",done:false},{r:10,w:"",done:false},{r:10,w:"",done:false},{r:10,w:"",done:false}] },
+  { id:2, name:"Leg Curl",               category:"gambe",     sets:[{r:10,w:"",done:false},{r:8,w:"",done:false},{r:8,w:"",done:false},{r:8,w:"",done:false}] },
+  { id:3, name:"Calf Machine",           category:"gambe",     sets:[{r:10,w:"",done:false},{r:8,w:"",done:false},{r:8,w:"",done:false},{r:8,w:"",done:false}] },
+  { id:4, name:"Tricipiti Poliercolina", category:"tricipiti", sets:[{r:12,w:"",done:false},{r:10,w:"",done:false},{r:8,w:"",done:false},{r:8,w:"",done:false}] },
+  { id:5, name:"Tricipiti Pol. 90°",     category:"tricipiti", sets:[{r:10,w:"",done:false},{r:8,w:"",done:false},{r:8,w:"",done:false}] },
+  { id:6, name:"Rich. Chest Press",      category:"petto",     sets:[{r:12,w:"",done:false},{r:12,w:"",done:false},{r:12,w:"",done:false},{r:12,w:"",done:false}] },
+  { id:7, name:"Rich. Alzate Laterali",  category:"spalle",    sets:[{r:12,w:"",done:false},{r:12,w:"",done:false},{r:12,w:"",done:false}] },
+];
+
+const DEFAULT_CIRCUIT = [
+  { id:101, name:"Alzate Gambe",    category:"circuito", circuit:true, sets:[{r:"MAX",w:"",done:false},{r:"MAX",w:"",done:false},{r:"MAX",w:"",done:false},{r:"MAX",w:"",done:false}] },
+  { id:102, name:"Rotazione Busto", category:"circuito", circuit:true, sets:[{r:20,w:"",done:false},{r:20,w:"",done:false},{r:20,w:"",done:false},{r:20,w:"",done:false}] },
+  { id:103, name:"2' Aerobico",     category:"circuito", circuit:true, sets:[{r:"2min",w:"",done:false},{r:"2min",w:"",done:false},{r:"2min",w:"",done:false},{r:"2min",w:"",done:false}] },
+];
+
+// ── State ────────────────────────────────────────────────────────────────────
+let exercises, workoutName, notes, nextId;
+let editingName = false, showAddForm = false, selectedCat = "gambe";
+let dragSrcIdx = null;
+
+// ── Persist ──────────────────────────────────────────────────────────────────
+function persist() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      exercises, workoutName,
+      notes: document.getElementById("notesArea")?.value || notes,
+      nextId
+    }));
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      exercises   = s.exercises  || JSON.parse(JSON.stringify(DEFAULT_EXERCISES));
+      workoutName = s.workoutName || "Gambe e Tricipiti";
+      notes       = s.notes       || "";
+      nextId      = s.nextId      || 200;
+      return;
+    }
+  } catch(e) {}
+  exercises   = JSON.parse(JSON.stringify(DEFAULT_EXERCISES));
+  workoutName = "Gambe e Tricipiti";
+  notes       = "";
+  nextId      = 200;
+}
+
+function resetWorkout() {
+  if (!confirm("Azzerare tutti i dati inseriti?")) return;
+  exercises = JSON.parse(JSON.stringify(DEFAULT_EXERCISES));
+  exercises.forEach(ex => ex.sets.forEach(s => { s.w = ""; s.done = false; }));
+  notes = "";
+  document.getElementById("notesArea").value = "";
+  persist();
+  render();
+}
+
+// ── Date ─────────────────────────────────────────────────────────────────────
+document.getElementById("dateLabel").textContent =
+  new Date().toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+
+// ── Progress ─────────────────────────────────────────────────────────────────
+function countProgress() {
+  const all = [...exercises, ...DEFAULT_CIRCUIT];
+  const done  = all.reduce((a,ex) => a + ex.sets.filter(s => s.done).length, 0);
+  const total = all.reduce((a,ex) => a + ex.sets.length, 0);
+  return { done, total };
+}
+
+function updateProgress() {
+  const { done, total } = countProgress();
+  document.getElementById("progressBadge").textContent = `${done}/${total} set`;
+  document.getElementById("progressFill").style.width = total > 0 ? `${(done/total)*100}%` : "0%";
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function isAerobic(name) {
+  const n = name.toLowerCase();
+  return AEROBIC_KEYWORDS.some(k => n.startsWith(k));
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  renderTitle();
+  renderExercises();
+  renderAddSection();
+  updateProgress();
+  persist();
+}
+
+function renderTitle() {
+  const wrap = document.getElementById("titleWrap");
+  if (editingName) {
+    wrap.innerHTML = `<input class="title-input" id="nameInput" value="${workoutName.replace(/"/g,'&quot;')}" autocomplete="off">`;
+    const inp = document.getElementById("nameInput");
+    inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
+    inp.addEventListener("blur",  () => { workoutName = inp.value.trim() || workoutName; editingName = false; render(); });
+    inp.addEventListener("keydown", e => { if(e.key==="Enter") inp.blur(); });
+  } else {
+    wrap.innerHTML = `<h1 class="workout-title" id="titleH1">${workoutName}</h1>`;
+    document.getElementById("titleH1").addEventListener("click", () => { editingName=true; render(); });
+  }
+}
+
+function renderExercises() {
+  const list = document.getElementById("exerciseList");
+  let html = "";
+
+  exercises.forEach((ex, idx) => { html += renderCard(ex, false, idx); });
+
+  html += `
+    <div class="circuit-divider">
+      <span style="font-size:16px">🔄</span>
+      <div>
+        <div style="font-size:11px;color:#10b981;letter-spacing:2px;font-weight:500">CIRCUITO × 4</div>
+        <div style="font-size:10px;color:#555;margin-top:2px">riposo tra i giri: ________</div>
+      </div>
+    </div>`;
+
+  DEFAULT_CIRCUIT.forEach((ex) => { html += renderCard(ex, true, -1); });
+
+  list.innerHTML = html;
+  attachListeners();
+}
+
+function renderCard(ex, isCircuit, idx) {
+  const color = CAT_COLORS[ex.category] || "#888";
+  const showAerobic = isAerobic(ex.name);
+
+  const setsHtml = ex.sets.map((s, i) => {
+    const doneClass = s.done ? "done" : "";
+    const repsVal = s.r !== undefined ? s.r : "";
+    const kgVal   = s.w !== undefined ? s.w : "";
+    const isReadonlyReps = isCircuit && typeof s.r === "string" && isNaN(s.r);
+    return `
+      <div class="set-row ${doneClass}" data-exid="${ex.id}" data-setidx="${i}">
+        <span class="set-num" style="${s.done ? 'color:#10b981' : ''}">${i+1}</span>
+        <div class="set-input-wrap">
+          <input class="set-input" type="${isCircuit?'text':'number'}" inputmode="${isCircuit?'text':'decimal'}"
+            placeholder="—" value="${repsVal}"
+            data-exid="${ex.id}" data-setidx="${i}" data-field="r"
+            ${isReadonlyReps ? 'readonly' : ''}>
+        </div>
+        <div class="set-input-wrap">
+          <input class="set-input" type="${isCircuit?'text':'number'}" inputmode="${isCircuit?'text':'decimal'}"
+            placeholder="—" value="${kgVal}"
+            data-exid="${ex.id}" data-setidx="${i}" data-field="w"
+            ${isCircuit ? 'readonly style="color:#333;pointer-events:none"' : ''}>
+        </div>
+        <button class="set-check ${s.done?'checked':''}" data-exid="${ex.id}" data-setidx="${i}" title="Segna come fatto">✓</button>
+        <button class="del-set-btn" data-exid="${ex.id}" data-setidx="${i}">×</button>
+      </div>`;
+  }).join("");
+
+  const dragAttrs = !isCircuit ? `draggable="true" data-idx="${idx}"` : "";
+
+  return `
+    <div class="ex-card" id="card-${ex.id}" ${dragAttrs}>
+      <div class="ex-header">
+        <div class="ex-header-left">
+          <div class="cat-dot" style="background:${color}"></div>
+          <span class="ex-name">${ex.name}</span>
+          <span class="cat-badge" style="color:${color};background:${color}22">${ex.category}</span>
+        </div>
+        <div class="ex-header-right">
+          ${!isCircuit ? `<button class="drag-handle" data-idx="${idx}" title="Sposta">⠿</button>` : ""}
+          ${!isCircuit ? `<button class="del-ex-btn" data-exid="${ex.id}">×</button>` : ""}
+        </div>
+      </div>
+      ${showAerobic ? `<div class="aerobic-note">🏃 Dopo l'esercizio: 2' aerobico</div>` : ""}
+      <div class="set-cols">
+        <span>SET</span><span>REPS</span><span>KG</span><span style="text-align:center">✓</span><span></span>
+      </div>
+      ${setsHtml}
+      <div class="card-footer">
+        ${!isCircuit ? `<button class="add-set-btn" data-exid="${ex.id}">+ Aggiungi set</button>` : ""}
+      </div>
+    </div>`;
+}
+
+// ── Listeners ─────────────────────────────────────────────────────────────────
+function attachListeners() {
+  // Inputs
+  document.querySelectorAll(".set-input[data-field]").forEach(inp => {
+    inp.addEventListener("input", e => {
+      const exId=+e.target.dataset.exid, idx=+e.target.dataset.setidx, field=e.target.dataset.field;
+      const ex = exercises.find(x=>x.id===exId) || DEFAULT_CIRCUIT.find(x=>x.id===exId);
+      if (ex) { ex.sets[idx][field]=e.target.value; persist(); updateProgress(); }
+    });
+  });
+
+  // Check buttons
+  document.querySelectorAll(".set-check").forEach(btn => {
+    btn.addEventListener("click", e => {
+      const exId=+e.currentTarget.dataset.exid, idx=+e.currentTarget.dataset.setidx;
+      const ex = exercises.find(x=>x.id===exId) || DEFAULT_CIRCUIT.find(x=>x.id===exId);
+      if (ex) {
+        ex.sets[idx].done = !ex.sets[idx].done;
+        const row = e.currentTarget.closest(".set-row");
+        row.classList.toggle("done", ex.sets[idx].done);
+        e.currentTarget.classList.toggle("checked", ex.sets[idx].done);
+        const num = row.querySelector(".set-num");
+        num.style.color = ex.sets[idx].done ? "#10b981" : "";
+        persist(); updateProgress();
+      }
+    });
+  });
+
+  // Del set
+  document.querySelectorAll(".del-set-btn").forEach(btn => {
+    btn.addEventListener("click", e => {
+      const exId=+e.target.dataset.exid, idx=+e.target.dataset.setidx;
+      const ex = exercises.find(x=>x.id===exId);
+      if (ex && ex.sets.length>1) { ex.sets.splice(idx,1); render(); }
+    });
+  });
+
+  // Del exercise
+  document.querySelectorAll(".del-ex-btn").forEach(btn => {
+    btn.addEventListener("click", e => {
+      const exId=+e.target.dataset.exid;
+      exercises = exercises.filter(x=>x.id!==exId);
+      render();
+    });
+  });
+
+  // Add set
+  document.querySelectorAll(".add-set-btn").forEach(btn => {
+    btn.addEventListener("click", e => {
+      const exId=+e.target.dataset.exid;
+      const ex = exercises.find(x=>x.id===exId);
+      if (ex) { ex.sets.push({r:"",w:"",done:false}); render(); }
+    });
+  });
+
+  // Drag & Drop (touch + mouse)
+  setupDragDrop();
+
+  // Notes autosave
+  const ta = document.getElementById("notesArea");
+  if (ta) {
+    ta.value = notes;
+    ta.addEventListener("input", () => { notes = ta.value; persist(); });
+  }
+}
+
+// ── Drag & Drop ───────────────────────────────────────────────────────────────
+function setupDragDrop() {
+  const cards = document.querySelectorAll(".ex-card[draggable='true']");
+
+  cards.forEach(card => {
+    // Desktop drag
+    card.addEventListener("dragstart", e => {
+      dragSrcIdx = +card.dataset.idx;
+      card.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+    });
+    card.addEventListener("dragend", () => card.classList.remove("dragging"));
+    card.addEventListener("dragover", e => { e.preventDefault(); card.classList.add("drag-over"); });
+    card.addEventListener("dragleave", () => card.classList.remove("drag-over"));
+    card.addEventListener("drop", e => {
+      e.preventDefault();
+      card.classList.remove("drag-over");
+      const targetIdx = +card.dataset.idx;
+      if (dragSrcIdx !== null && dragSrcIdx !== targetIdx) {
+        const moved = exercises.splice(dragSrcIdx, 1)[0];
+        exercises.splice(targetIdx, 0, moved);
+        dragSrcIdx = null;
+        render();
+      }
+    });
+
+    // Touch drag via handle
+    const handle = card.querySelector(".drag-handle");
+    if (!handle) return;
+    let touchStartY, startIdx, clone;
+
+    handle.addEventListener("touchstart", e => {
+      e.preventDefault();
+      startIdx = +card.dataset.idx;
+      touchStartY = e.touches[0].clientY;
+      card.classList.add("dragging");
+    }, {passive:false});
+
+    handle.addEventListener("touchmove", e => {
+      e.preventDefault();
+      const y = e.touches[0].clientY;
+      const els = document.elementsFromPoint(e.touches[0].clientX, y);
+      const target = els.find(el => el.classList.contains("ex-card") && el !== card && el.dataset.idx !== undefined);
+      document.querySelectorAll(".ex-card").forEach(c => c.classList.remove("drag-over"));
+      if (target) target.classList.add("drag-over");
+    }, {passive:false});
+
+    handle.addEventListener("touchend", e => {
+      card.classList.remove("dragging");
+      document.querySelectorAll(".ex-card").forEach(c => c.classList.remove("drag-over"));
+      const y = e.changedTouches[0].clientY;
+      const els = document.elementsFromPoint(e.changedTouches[0].clientX, y);
+      const target = els.find(el => el.classList.contains("ex-card") && el !== card && el.dataset.idx !== undefined);
+      if (target) {
+        const targetIdx = +target.dataset.idx;
+        if (startIdx !== targetIdx) {
+          const moved = exercises.splice(startIdx, 1)[0];
+          exercises.splice(targetIdx, 0, moved);
+          render();
+        }
+      }
+    });
+  });
+}
+
+// ── Add form ──────────────────────────────────────────────────────────────────
+function renderAddSection() {
+  const sec = document.getElementById("addSection");
+  if (showAddForm) {
+    const pillsHtml = CATEGORIES.map(cat => {
+      const color = CAT_COLORS[cat]||"#888", active = cat===selectedCat;
+      return `<button class="cat-pill" data-cat="${cat}"
+        style="${active?`background:${color}22;border-color:${color};color:${color}`:''}">
+        ${cat}</button>`;
+    }).join("");
+
+    sec.innerHTML = `
+      <div class="add-ex-form">
+        <div class="form-label">Nuovo esercizio</div>
+        <input class="form-input" id="newExName" placeholder="Nome esercizio" autocomplete="off">
+        <div class="cat-pills">${pillsHtml}</div>
+        <div class="form-actions">
+          <button class="btn-primary" id="confirmAddEx">Aggiungi</button>
+          <button class="btn-secondary" id="cancelAddEx">Annulla</button>
+        </div>
+      </div>`;
+
+    document.getElementById("newExName").focus();
+
+    document.querySelectorAll(".cat-pill").forEach(p => {
+      p.addEventListener("click", e => { selectedCat=e.target.dataset.cat; renderAddSection(); });
+    });
+
+    document.getElementById("confirmAddEx").addEventListener("click", () => {
+      const name = document.getElementById("newExName").value.trim();
+      if (!name) return;
+      exercises.push({id:++nextId, name, category:selectedCat, sets:[{r:"",w:"",done:false},{r:"",w:"",done:false},{r:"",w:"",done:false}]});
+      showAddForm = false; render();
+    });
+
+    document.getElementById("newExName").addEventListener("keydown", e => {
+      if(e.key==="Enter") document.getElementById("confirmAddEx").click();
+    });
+
+    document.getElementById("cancelAddEx").addEventListener("click", () => { showAddForm=false; render(); });
+
+  } else {
+    sec.innerHTML = `<button class="add-ex-trigger" id="showAddBtn">+ Aggiungi esercizio</button>`;
+    document.getElementById("showAddBtn").addEventListener("click", () => { showAddForm=true; render(); });
+  }
+}
+
+// ── Save PDF ──────────────────────────────────────────────────────────────────
+function saveWorkout() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:"mm", format:"a4" });
+  const pageW=210, margin=14, colW=pageW-margin*2;
+  let y=20;
+
+  const date = new Date().toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+
+  doc.setFillColor(13,13,13); doc.rect(0,0,pageW,36,"F");
+  doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.setTextColor(255,255,255);
+  doc.text(workoutName.toUpperCase(), margin, y);
+  doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(120,120,120);
+  doc.text(date, margin, y+8); y=44;
+
+  const CAT_RGB = {
+    gambe:[249,115,22],petto:[59,130,246],schiena:[16,185,129],
+    spalle:[168,85,247],braccia:[236,72,153],tricipiti:[59,130,246],
+    core:[234,179,8],cardio:[239,68,68],circuito:[16,185,129],
+  };
+
+  [...exercises, ...DEFAULT_CIRCUIT].forEach((ex, exIdx) => {
+    const isCircuit = !!ex.circuit;
+    const rgb = CAT_RGB[ex.category]||[136,136,136];
+    const blockH = 10 + ex.sets.length*7 + 6;
+    if (y+blockH > 280) { doc.addPage(); y=20; }
+
+    if (isCircuit && exIdx === exercises.length) {
+      doc.setFillColor(10,26,20); doc.rect(margin,y,colW,8,"F");
+      doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(16,185,129);
+      doc.text("CIRCUITO x4", margin+3, y+5.5); y+=11;
+    }
+
+    doc.setFillColor(...rgb); doc.rect(margin,y,2,blockH-4,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(230,230,230);
+    doc.text(ex.name.toUpperCase(), margin+5, y+5);
+    doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(...rgb);
+    doc.text(ex.category.toUpperCase(), margin+5+doc.getTextWidth(ex.name.toUpperCase())+4, y+5);
+    y+=10;
+
+    doc.setFontSize(7); doc.setTextColor(100,100,100);
+    doc.text("SET",margin+5,y); doc.text("REPS",margin+30,y);
+    if(!isCircuit){doc.text("KG",margin+60,y);} doc.text("✓",margin+85,y);
+    y+=5;
+
+    ex.sets.forEach((s,i) => {
+      doc.setFillColor(s.done?[10,40,15]:i%2===0?[26,26,26]:[20,20,20]);
+      if(s.done) doc.setFillColor(10,40,15); else doc.setFillColor(i%2===0?26:20,i%2===0?26:20,i%2===0?26:20);
+      doc.rect(margin+3,y-4,colW-3,6.5,"F");
+      doc.setFont("helvetica","normal"); doc.setFontSize(8);
+      doc.setTextColor(160,160,160); doc.text(String(i+1),margin+5,y);
+      const rv = s.r!==""&&s.r!==undefined?String(s.r):"—";
+      doc.setTextColor(230,230,230); doc.text(rv,margin+30,y);
+      if(!isCircuit){
+        const kv=s.w!==""&&s.w!==undefined?String(s.w)+" kg":"—";
+        doc.setTextColor(s.w!==""?249:80,s.w!==""?115:80,s.w!==""?22:80);
+        doc.text(kv,margin+60,y);
+      }
+      doc.setTextColor(s.done?16:60, s.done?185:60, s.done?129:60);
+      doc.text(s.done?"✓":"○", margin+85, y);
+      y+=7;
+    });
+    y+=4;
+  });
+
+  const notesVal = (document.getElementById("notesArea")||{}).value||"";
+  if(notesVal.trim()){
+    if(y+20>280){doc.addPage();y=20;}
+    doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(100,100,100);
+    doc.text("NOTE",margin,y+6); y+=10;
+    doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(180,180,180);
+    doc.text(doc.splitTextToSize(notesVal,colW),margin,y);
+  }
+
+  doc.save(`allenamento-${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+// ── Install banner ────────────────────────────────────────────────────────────
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+if (isIOS && !window.navigator.standalone && !sessionStorage.getItem("bannerDismissed")) {
+  setTimeout(() => document.getElementById("installBanner").style.display="flex", 1500);
+}
+document.getElementById("installClose").addEventListener("click", () => {
+  document.getElementById("installBanner").style.display="none";
+  sessionStorage.setItem("bannerDismissed","1");
+});
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+loadState();
+render();
+</script>
+</body>
+</html>
